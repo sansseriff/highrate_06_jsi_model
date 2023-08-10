@@ -13,3 +13,5 @@
 *.jpg
 *.jpeg
 
+!JSI_sim_results_light.svg
+
