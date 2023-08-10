@@ -8,4 +8,4 @@ Based on these papers:
 2. [Modelling parametric down-conversion yielding spectrally pure photon pairs](https://opg.optica.org/oe/fulltext.cfm?uri=oe-24-3-2712&id=335990)
 3. [Joint spectral characterization of photon-pair sources](https://www.tandfonline.com/doi/abs/10.1080/09500340.2018.1437228?journalCode=tmop20)
 
-![model](./test.svg)
+![model](./JSI_sim_results_light.svg)
