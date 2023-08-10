@@ -236,7 +236,7 @@ def dwdm2D(x, y, x_0, y_0, x_trans=1, y_trans=1, width_adj=1.0, gaussian=False):
     if x_0 == 0:
         # if y_0 is nonzero and x_0 is zero, then apply just the y filter.
         # Used for fitting to singles count rates
-        # print("found zero x")
+        print(f"found zero x. Other transmission [{x_trans}] is ignored")
         dwdm_y = Dwdm(width_adj=width_adj, gaussian=gaussian, transmission=y_trans)
         return dwdm_y.from_array(y, y_0)
 
@@ -244,6 +244,7 @@ def dwdm2D(x, y, x_0, y_0, x_trans=1, y_trans=1, width_adj=1.0, gaussian=False):
         # if x_0 is nonzero and y_0 is zero, then apply just the x filter
         # Used for fitting to singles count rates
         # print("found zero y")
+        print(f"found zero y. Other transmission [{y_trans}] is ignored")
         dwdm_x = Dwdm(width_adj=width_adj, gaussian=gaussian, transmission=x_trans)
         # prinfo(np.max(dwdm_x.from_array(x, x_0)))
         # prinfo(np.sum(dwdm_x.from_array(x, x_0)))
@@ -678,6 +679,8 @@ def evaluate_model(
     filter_trans_x,
     filter_trans_y,
     enable_detector=True,
+    width_scalar = 1,
+
 ):
     """evaluate the joint spectrum at a given filter wavelength
 
@@ -689,10 +692,10 @@ def evaluate_model(
     Returns:
         float: joint spectrum value
     """
-    X, Y = create_sub_mesh_grids(filter_wl_x, filter_wl_y, 30)
+    X, Y = create_sub_mesh_grids(filter_wl_x, filter_wl_y, 30, span=0.8*width_scalar)
     dx = (X[0, -1] - X[0, 0]) / len(X)
     dy = (Y[-1, 0] - Y[0, 0]) / len(Y)
-    filter_dwdm = dwdm2D(X, Y, filter_wl_x, filter_wl_y, filter_trans_x, filter_trans_y)
+    filter_dwdm = dwdm2D(X, Y, filter_wl_x, filter_wl_y, filter_trans_x, filter_trans_y, width_adj=width_scalar)
     return (
         dx
         * dy
@@ -712,6 +715,8 @@ def evaluate_model(
 
 def create_sub_mesh_grids(x_wl: float, y_wl: float, res: int, span: float = 0.8):
     """create a 2D grid of points a little larger than a filter transmission window.
+    Think of it like a grid of points in the shape or a square or rectangle that defines
+    where transmissions and the JSI will be evaluated. 
     Used for integrating the transmission through the filter
 
     Args:
@@ -724,20 +729,24 @@ def create_sub_mesh_grids(x_wl: float, y_wl: float, res: int, span: float = 0.8)
         _type_: X and Y mesh grids
     """
     if x_wl != 0.0:
+        # a filter along this dimension is specified
         start_x_wl = x_wl - span
         end_x_wl = x_wl + span
         array_x_wl = np.linspace(start_x_wl, end_x_wl, res)
     else:
+        # no filter along this dimension (only y filter is used)
         # make extra long sub-grid in this dimension for single filter
         start_x_wl = 1540 - 20
         end_x_wl = 1540 + 20
         array_x_wl = np.linspace(start_x_wl, end_x_wl, res)
 
     if y_wl != 0.0:
+        # a filter along this dimension is specified
         start_y_wl = y_wl - span
         end_y_wl = y_wl + span
         array_y_wl = np.linspace(start_y_wl, end_y_wl, res)
     else:
+        # no filter along this dimension (only x filter is used)
         # make extra long sub-grid in this dimension for single filter
         start_y_wl = 1540 - 20
         end_y_wl = 1540 + 20
@@ -768,7 +777,11 @@ def run_lmfit_filter(
 
     else:
         print("starting fit")
+
+        #### the function that will be fit ####
         mod = Model(lmfit_wrapper_join_spectrum_filter_integrate_cs)
+
+
         lmfit_params_fi = mod.make_params(
             detector_sigma=dict(value=params.detector.sigma, vary=False),
             detector_w_0=dict(value=params.detector.w_0, vary=False),
